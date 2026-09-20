@@ -1,11 +1,98 @@
 "use client";
 import * as THREE from 'three';
 import * as Drei from '@react-three/drei';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { loadMediaUrl } from '../lib/mediaStorage';
+
+export function VideoPreview({ src, poster, title }: { src: string; poster: string; title: string }) {
+  const [ready, setReady] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    setReady(false);
+    video.muted = true;
+    video.loop = true;
+
+    const start = () => {
+      video.muted = true;
+      void video.play().catch(() => undefined);
+    };
+    const markPlaying = () => setReady(true);
+
+    video.addEventListener('loadedmetadata', start);
+    video.addEventListener('loadeddata', start);
+    video.addEventListener('canplay', start);
+    video.addEventListener('canplaythrough', start);
+    video.addEventListener('playing', markPlaying);
+    video.load();
+    start();
+
+    return () => {
+      video.removeEventListener('loadedmetadata', start);
+      video.removeEventListener('loadeddata', start);
+      video.removeEventListener('canplay', start);
+      video.removeEventListener('canplaythrough', start);
+      video.removeEventListener('playing', markPlaying);
+      video.pause();
+    };
+  }, [src]);
+
+  return (
+    <>
+      <div className={`absolute inset-0 bg-slate-950 ${ready ? 'opacity-0' : 'opacity-100'}`} />
+      {poster && (
+        <img src={poster} alt={title} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${ready ? 'opacity-0' : 'opacity-100'}`} />
+      )}
+      <video
+        ref={videoRef}
+        src={src}
+        poster={poster}
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        onPlaying={() => setReady(true)}
+        onError={() => setReady(false)}
+        aria-label={title}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${ready ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </>
+  );
+}
 
 export function MediaCard({ data, onClick, theme }: { data: any, onClick: (data: any) => void, theme: string }) {
   const meshRef = useRef<THREE.Group>(null);
   const [hovered, setHover] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(data.mediaUrl || null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+
+    if (data.mediaUrl) {
+      setVideoUrl(data.mediaUrl);
+      return;
+    }
+    if (!data.mediaId) return;
+
+    loadMediaUrl(data.mediaId).then(url => {
+      if (cancelled) {
+        if (url) URL.revokeObjectURL(url);
+        return;
+      }
+      objectUrl = url;
+      setVideoUrl(url);
+    }).catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [data.mediaId, data.mediaUrl]);
 
   const getColors = () => {
     if (theme === 'ocean') return { bg: 'rgba(0, 15, 30, 0.85)', border: 'rgba(50, 150, 255, 0.4)', text: 'text-blue-50', tag: 'bg-blue-900/60 text-blue-300 border-blue-500/30' };
@@ -32,22 +119,13 @@ export function MediaCard({ data, onClick, theme }: { data: any, onClick: (data:
       }}
       onPointerEnter={() => { setHover(true); document.body.style.cursor = 'pointer'; }}
       onPointerLeave={() => { setHover(false); document.body.style.cursor = 'auto'; }}
-      onClick={(e) => { e.stopPropagation(); onClick(data); document.body.style.cursor = 'auto'; }}
+      onClick={(e) => { e.stopPropagation(); onClick(videoUrl ? { ...data, mediaUrl: videoUrl } : data); document.body.style.cursor = 'auto'; }}
     >
       <div className="relative flex-1 rounded-xl overflow-hidden mb-3">
         {data.type === 'video' ? (
           <>
-            {data.mediaUrl ? (
-              <video
-                src={data.mediaUrl}
-                poster={data.image}
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="metadata"
-                className="absolute inset-0 w-full h-full object-cover"
-              />
+            {videoUrl ? (
+              <VideoPreview src={videoUrl} poster={data.image} title={data.title} />
             ) : (
               <img src={data.image} alt={data.title} className="absolute inset-0 w-full h-full object-cover" />
             )}
@@ -91,7 +169,7 @@ export function MediaCard({ data, onClick, theme }: { data: any, onClick: (data:
 
   return (
     <group ref={meshRef}>
-      <Drei.Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
+      <Drei.Billboard follow lockX={false} lockY={false} lockZ={false}>
         <Drei.Html transform distanceFactor={15} zIndexRange={[100, 0]}>
           {content}
         </Drei.Html>

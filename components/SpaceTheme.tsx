@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { Float, Stars, Sparkles, Text } from '@react-three/drei';
 import * as Drei from '@react-three/drei';
 import * as THREE from 'three';
+import { VideoPreview } from './MediaCard';
 
 export function SpaceTheme({ 
   nodes, 
@@ -302,6 +303,8 @@ function SpaceNode({ data, position, onClick }: { data: any; position: [number, 
                     </div>
                     <span className="text-[11px] text-blue-300 font-medium">Voice Clip</span>
                   </div>
+                ) : data.type === 'video' && data.mediaUrl ? (
+                  <VideoPreview src={data.mediaUrl} poster={data.image} title={data.title} />
                 ) : (
                   <img src={data.image} alt={data.title} className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ${hovered ? 'scale-110' : 'scale-100'}`} />
                 )}

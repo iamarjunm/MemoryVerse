@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { Float, Sparkles, Instance, Instances } from '@react-three/drei';
 import * as Drei from '@react-three/drei';
 import * as THREE from 'three';
+import { VideoPreview } from './MediaCard';
 
 export function OceanTheme({ nodes, onMemoryClick }: { nodes: any[], onMemoryClick: (data: any) => void }) {
   const cardCount = Math.max(nodes.length, 1);
@@ -370,6 +371,8 @@ function OceanNode({ data, position, onClick }: { data: any; position: [number, 
                   </div>
                   <span className="text-xs text-cyan-300 font-medium">Voice Memory</span>
                 </div>
+              ) : data.type === 'video' && data.mediaUrl ? (
+                <VideoPreview src={data.mediaUrl} poster={data.image} title={data.title} />
               ) : (
                 <div className="absolute inset-0 w-full h-full overflow-hidden rounded-full">
                   <div className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-1000 ${hovered ? 'opacity-100' : 'opacity-0'}`}>

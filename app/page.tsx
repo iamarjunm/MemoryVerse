@@ -501,7 +501,8 @@ export default function MemoryVerse() {
 
     setIsSubmitting(true);
 
-    const imageUrl = uploadedPoster || uploadedFilePreview
+    const imageUrl = uploadedPoster
+      || (newType !== 'video' ? uploadedFilePreview : null)
       || `https://picsum.photos/seed/${encodeURIComponent(newTitle.trim())}/600/400`;
 
     const item: MemoryItem = {
@@ -1215,11 +1216,10 @@ export default function MemoryVerse() {
                     src={selectedMemory.mediaUrl} 
                     poster={selectedMemory.image}
                     autoPlay
-                    muted
                     loop
                     controls 
                     playsInline
-                    preload="metadata"
+                    preload="auto"
                     className="w-full h-full object-cover" 
                   >
                     Your browser does not support video playback.

@@ -1,21 +1,28 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# MemoryVerse
 
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/0c54bab5-e1b7-46fd-ad5c-49ba84b7f674
+MemoryVerse is an immersive 3D scrapbook for exploring memories through space, ocean, forest, and train themes.
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js and pnpm
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
-# MemoryVerse
+   `pnpm install`
+2. Start the development server:
+   `pnpm dev`
+3. Open `http://localhost:3000`
+
+## Production
+
+Build and run the production app locally:
+
+```bash
+pnpm build
+pnpm start
+```
+
+The app stores worlds and metadata in the browser. Uploaded video and audio files are kept in IndexedDB, while lightweight world data is stored in local storage.
+
+## Deployment
+
+The project can be deployed with Vercel using the standard Next.js build settings. Keep `pnpm-lock.yaml` committed so dependency installation remains reproducible.

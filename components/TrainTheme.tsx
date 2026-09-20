@@ -216,22 +216,18 @@ function TrainNode({
 
   useFrame((state) => {
     if (meshRef.current) {
-      const totalLength = 225; // 5 cards per side * 45 units spacing
+      const totalLength = 225;
       const offset = offsetRef.current ?? 0;
-      
-      // Calculate looping Z position towards camera (+Z direction)
+
       let currentZ = ((position[2] + offset) % totalLength + totalLength) % totalLength;
-      // Shift so cards emerge far in the tunnel (-195) and travel past the camera (+30)
       currentZ -= 195;
-      
+
       meshRef.current.position.z = currentZ;
       meshRef.current.position.x = position[0];
-      // Subtle rhythmic vertical train sway (stops when paused)
       const swayFactor = isPaused ? 0.04 : 0.2;
       meshRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * (isPaused ? 1 : 2.5) + position[0]) * swayFactor;
-      
-      // Inward angle toward the central corridor viewer:
-      const targetAngleY = isLeft ? 0.32 : -0.32; // ~18 degrees inward
+
+      const targetAngleY = isLeft ? 0.32 : -0.32;
       meshRef.current.rotation.set(0, targetAngleY, 0);
     }
   });
