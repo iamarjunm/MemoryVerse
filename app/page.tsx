@@ -68,7 +68,7 @@ const MemoryCanvas = dynamic(() => import('../components/MemoryCanvas'), {
   )
 });
 
-import { ThemeType, DEFAULT_MEMORIES, MemoryItem, getClusterCenter } from '../components/MemoryCanvas';
+import { ThemeType, THEME_OPTIONS, DEFAULT_MEMORIES, MemoryItem, getClusterCenter } from '../components/MemoryCanvas';
 
 export type SpaceStyleType = 'random' | 'spiral' | 'clusters' | 'rings';
 
@@ -94,13 +94,20 @@ const STORAGE_KEY_WORLDS = 'memoryverse_worlds';
 const STORAGE_KEY_ACTIVE = 'memoryverse_active_world_id';
 const MAX_STORAGE_BYTES = 4 * 1024 * 1024; // 4 MB guard
 
+function normalizeWorld(world: World): World {
+  const theme = world.theme === 'bedroom' || (world.theme as string) === 'birthday'
+    ? 'space'
+    : world.theme;
+  return { ...world, theme };
+}
+
 function loadWorlds(): World[] {
   if (typeof window === 'undefined') return [];
   try {
     const saved = localStorage.getItem(STORAGE_KEY_WORLDS);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed.map(normalizeWorld);
     }
   } catch {}
   
@@ -181,6 +188,7 @@ export default function MemoryVerse() {
   
   const activeWorld = worlds.find(w => w.id === activeWorldId) || worlds[0];
   const memories = activeWorld?.memories || [];
+  const themeOptions = THEME_OPTIONS;
 
   // Make sure theme syncs with active world on load
   useEffect(() => {
@@ -418,7 +426,7 @@ export default function MemoryVerse() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [theme, viewState, selectedMemory, toggleAudio]);
+  }, [theme, viewState, selectedMemory, toggleAudio, handleThemeSwitch]);
 
   // ---------- File upload (for memory media) ----------
   const createVideoPoster = (url: string): Promise<string> => new Promise(resolve => {
@@ -664,7 +672,7 @@ export default function MemoryVerse() {
 
   return (
     <div className={`relative w-full h-screen overflow-hidden font-sans antialiased text-white selection:bg-white/30 transition-colors duration-1000 ${
-      theme === 'ocean' ? 'bg-[#001133]' : theme === 'forest' ? 'bg-[#0b2119]' : theme === 'train' ? 'bg-[#1a1005]' : 'bg-[#020617]'
+      theme === 'ocean' ? 'bg-[#001133]' : theme === 'forest' ? 'bg-[#071018]' : theme === 'train' ? 'bg-[#1a1005]' : 'bg-[#020617]'
     }`}>
 
       {/* Hidden file inputs */}
@@ -723,14 +731,14 @@ export default function MemoryVerse() {
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="absolute top-0 left-0 w-full z-40 px-6 py-5 flex justify-between items-center pointer-events-none"
+        className="absolute top-0 left-0 w-full z-40 px-3 py-3 sm:px-6 sm:py-5 flex justify-between items-center pointer-events-none"
       >
         {/* Logo */}
         <div onClick={() => { setViewState('hero'); setSelectedMemory(null); }} className="flex items-center gap-3 pointer-events-auto cursor-pointer group">
-          <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-2xl group-hover:bg-white/20 transition-colors">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-2xl group-hover:bg-white/20 transition-colors">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <span className="font-serif text-2xl tracking-tight">MemoryVerse</span>
+          <span className="font-serif text-xl sm:text-2xl tracking-tight">MemoryVerse</span>
         </div>
 
         {/* Center Tabs — only in canvas view */}
@@ -743,7 +751,7 @@ export default function MemoryVerse() {
               className="hidden md:flex flex-col items-center gap-2 pointer-events-auto shadow-2xl"
             >
               <div className="flex items-center p-1 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full">
-                {(['space', 'ocean', 'forest', 'train'] as ThemeType[]).map((t, index) => (
+                {themeOptions.map((t, index) => (
                   <button
                     key={t}
                     onClick={() => handleThemeSwitch(t)}
@@ -796,11 +804,11 @@ export default function MemoryVerse() {
         </AnimatePresence>
 
         {/* Right Action Buttons */}
-        <div className="flex items-center gap-2 pointer-events-auto">
+        <div className="flex items-center gap-1 sm:gap-2 pointer-events-auto">
           {viewState === 'canvas' && (
             <button 
               onClick={() => { setViewState('gallery'); setSelectedMemory(null); }} 
-              className="px-4 h-10 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors text-sm font-medium"
+              className="hidden sm:flex px-4 h-10 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 items-center justify-center hover:bg-white/20 transition-colors text-sm font-medium"
             >
               Gallery
             </button>
@@ -809,7 +817,7 @@ export default function MemoryVerse() {
           {/* Help */}
           <button
             onClick={() => setShowHelp(true)}
-            className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
             title="Help & Shortcuts"
           >
             <HelpCircle className="w-4 h-4 text-white/80" />
@@ -818,7 +826,7 @@ export default function MemoryVerse() {
           {/* Import */}
           <button
             onClick={() => importInputRef.current?.click()}
-            className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
             title="Import memories from file"
           >
             <FolderOpen className="w-4 h-4 text-white/80" />
@@ -827,7 +835,7 @@ export default function MemoryVerse() {
           {/* Export */}
           <button
             onClick={handleExport}
-            className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
             title="Export memories to file"
           >
             <Download className="w-4 h-4 text-white/80" />
@@ -836,14 +844,33 @@ export default function MemoryVerse() {
           {/* Add Memory */}
           <button 
             onClick={() => setShowNewScrapbook(true)} 
-            className="px-4 h-10 rounded-full bg-white text-slate-950 flex items-center gap-2 hover:scale-105 transition-transform shadow-xl shadow-white/20 font-medium text-sm"
+            className="w-9 h-9 sm:w-auto sm:px-4 sm:h-10 rounded-full bg-white text-slate-950 flex items-center justify-center sm:gap-2 hover:scale-105 transition-transform shadow-xl shadow-white/20 font-medium text-sm"
             title="Add a new memory"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Memory</span>
+            <span className="hidden sm:inline">Add Memory</span>
           </button>
         </div>
       </motion.nav>
+
+      {viewState === 'canvas' && (
+        <div className="absolute top-[4.75rem] left-0 right-0 z-30 px-3 md:hidden pointer-events-auto">
+          <div className="flex gap-1.5 overflow-x-auto overscroll-x-contain rounded-2xl bg-slate-950/70 p-1.5 backdrop-blur-xl border border-white/10 shadow-xl scrollbar-none">
+            {themeOptions.map((t) => (
+              <button
+                key={t}
+                onClick={() => handleThemeSwitch(t)}
+                aria-pressed={theme === t}
+                className={`min-h-10 shrink-0 rounded-xl px-4 text-xs font-medium capitalize transition-colors ${
+                  theme === t ? 'bg-white text-slate-950' : 'text-white/70 hover:bg-white/10'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Space Constellation Quick-Fly HUD */}
       <AnimatePresence>
@@ -1087,7 +1114,7 @@ export default function MemoryVerse() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/70 backdrop-blur-md"
             onClick={() => setShowNewWorldModal(false)}
           >
             <motion.div 
@@ -1095,7 +1122,7 @@ export default function MemoryVerse() {
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.92, y: 20, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-lg bg-slate-900/95 backdrop-blur-2xl border border-white/20 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col p-8"
+              className="relative my-3 sm:my-0 w-full max-w-lg bg-slate-900/95 backdrop-blur-2xl border border-white/20 rounded-3xl sm:rounded-[2rem] overflow-hidden shadow-2xl flex flex-col p-5 sm:p-8"
               onClick={e => e.stopPropagation()}
             >
               <button 
@@ -1153,8 +1180,8 @@ export default function MemoryVerse() {
                     {[
                       { id: 'space', label: 'Cosmic Space', icon: Star, color: 'text-blue-400' },
                       { id: 'ocean', label: 'Deep Blue Ocean', icon: Waves, color: 'text-cyan-400' },
-                      { id: 'forest', label: 'Enchanted Forest', icon: TreePine, color: 'text-emerald-400' },
-                      { id: 'train', label: 'Midnight Train', icon: Train, color: 'text-amber-400' }
+                      { id: 'forest', label: 'Moonlit Forest', icon: TreePine, color: 'text-emerald-400' },
+                      { id: 'train', label: 'Midnight Train', icon: Train, color: 'text-amber-400' },
                     ].map(({ id, label, icon: Icon, color }) => (
                       <button 
                         key={id} 
@@ -1189,7 +1216,7 @@ export default function MemoryVerse() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/70 backdrop-blur-md"
             onClick={() => setSelectedMemory(null)}
           >
             <motion.div 
@@ -1197,7 +1224,7 @@ export default function MemoryVerse() {
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.92, y: 20, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-4xl bg-slate-900/90 backdrop-blur-2xl border border-white/20 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row"
+              className="relative my-3 sm:my-0 w-full max-w-4xl bg-slate-900/90 backdrop-blur-2xl border border-white/20 rounded-3xl sm:rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row"
               onClick={e => e.stopPropagation()}
             >
               {/* Close */}
@@ -1210,7 +1237,7 @@ export default function MemoryVerse() {
               </button>
               
               {/* Media Section */}
-              <div className="relative w-full md:w-3/5 h-64 md:h-[32rem] bg-black flex items-center justify-center overflow-hidden">
+              <div className="relative w-full md:w-3/5 aspect-video md:aspect-auto md:h-[32rem] bg-black flex items-center justify-center overflow-hidden">
                 {selectedMemory.type === 'video' ? (
                   <video 
                     src={selectedMemory.mediaUrl} 
@@ -1246,7 +1273,7 @@ export default function MemoryVerse() {
               </div>
 
               {/* Content Section */}
-              <div className="w-full md:w-2/5 p-8 md:p-10 flex flex-col justify-between bg-gradient-to-bl from-white/5 to-transparent">
+              <div className="w-full md:w-2/5 p-5 sm:p-8 md:p-10 flex flex-col justify-between bg-gradient-to-bl from-white/5 to-transparent">
                 <div>
                   <div className="flex items-center gap-3 text-white/50 mb-4 flex-wrap">
                     {selectedMemory.type === 'photo' && <ImageIcon className="w-5 h-5 text-blue-400" />}
@@ -1628,11 +1655,15 @@ export default function MemoryVerse() {
                     </div>
                     <div className="bg-white/5 p-3 rounded-xl border border-white/10 flex items-center gap-3">
                       <TreePine className="w-5 h-5 text-emerald-400" />
-                      <div><div className="font-medium text-white">Forest [3]</div><div className="text-xs text-slate-500">Fireflies & Mystical Glade</div></div>
+                      <div><div className="font-medium text-white">Forest [3]</div><div className="text-xs text-slate-500">Moonlit glade & fireflies</div></div>
                     </div>
                     <div className="bg-white/5 p-3 rounded-xl border border-white/10 flex items-center gap-3">
                       <Train className="w-5 h-5 text-amber-500" />
                       <div><div className="font-medium text-white">Train [4]</div><div className="text-xs text-slate-500">Vintage Midnight Express</div></div>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-xl border border-white/10 flex items-center gap-3 col-span-2 sm:col-span-1">
+                      <BedDouble className="w-5 h-5 text-violet-300" />
+                      <div><div className="font-medium text-white">Bedroom [5]</div><div className="text-xs text-slate-500">Rainy night & polaroid memories</div></div>
                     </div>
                   </div>
                 </section>
@@ -1650,6 +1681,7 @@ export default function MemoryVerse() {
                     <div className="flex justify-between"><span>Switch to Ocean Theme</span> <kbd className="bg-white/10 px-2 py-0.5 rounded text-white font-mono text-xs border border-white/20">2</kbd></div>
                     <div className="flex justify-between"><span>Switch to Forest Theme</span> <kbd className="bg-white/10 px-2 py-0.5 rounded text-white font-mono text-xs border border-white/20">3</kbd></div>
                     <div className="flex justify-between"><span>Switch to Train Theme</span> <kbd className="bg-white/10 px-2 py-0.5 rounded text-white font-mono text-xs border border-white/20">4</kbd></div>
+                    <div className="flex justify-between"><span>Switch to Bedroom Theme</span> <kbd className="bg-white/10 px-2 py-0.5 rounded text-white font-mono text-xs border border-white/20">5</kbd></div>
                   </div>
                 </section>
 

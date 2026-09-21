@@ -10,6 +10,8 @@ import { TrainTheme } from './TrainTheme';
 
 export type ThemeType = 'space' | 'ocean' | 'forest' | 'train';
 
+export const THEME_OPTIONS: ThemeType[] = ['space', 'ocean', 'forest', 'train'];
+
 export interface MemoryItem {
   id: number | string;
   title: string;
@@ -84,7 +86,7 @@ function GlobalCameraController({
         if (theme === 'ocean') {
           camera.position.set(0, 4, 46);
         } else if (theme === 'forest') {
-          camera.position.set(0, 4, 44);
+          camera.position.set(0, 5, 42);
         } else if (theme === 'space') {
           camera.position.set(0, 22, 68);
         }
@@ -171,7 +173,7 @@ function ThemeRouter({
         const count = list.length || 1;
         radius = Math.max(12, count * 1.5) + (i % 3) * 4;
         theta = (i / count) * Math.PI * 2;
-        y = ((i % 4) - 1.5) * 2.5 + 1;
+        y = ((i % 4) - 1.5) * 2.5 + 2.5;
       } else if (theme === 'train') {
         // Alternating Left (-1) and Right (+1) sides of the train corridor
         const side = i % 2 === 0 ? -1 : 1;
@@ -261,7 +263,7 @@ export default function MemoryCanvas({
   const getThemeColors = () => {
     switch (theme) {
       case 'ocean': return { bg: '#001133' };
-      case 'forest': return { bg: '#0b2119' };
+      case 'forest': return { bg: '#071018' };
       case 'train': return { bg: '#1a1005' };
       case 'space':
       default: return { bg: '#020617' };

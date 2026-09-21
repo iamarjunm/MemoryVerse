@@ -47,6 +47,9 @@ export class AmbientSoundscape {
       case 'train':
         this.startTrain();
         break;
+      case 'bedroom':
+        this.startBedroom();
+        break;
       case 'space':
       default:
         this.startSpace();
@@ -61,6 +64,48 @@ export class AmbientSoundscape {
     }
     if (this.currentTheme === theme) return;
     this.start(theme);
+  }
+
+  private playTransientTone(frequency: number, duration: number, type: OscillatorType = 'sine') {
+    try {
+      this.initContext();
+      if (!this.ctx) return;
+
+      const oscillator = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const now = this.ctx.currentTime;
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      oscillator.connect(gain);
+      gain.connect(this.gainNode || this.ctx.destination);
+      oscillator.start(now);
+      oscillator.stop(now + duration + 0.05);
+    } catch {
+      // Visual effects must remain functional when audio is unavailable.
+    }
+  }
+
+  public playFireworkBurst() {
+    this.playTransientTone(740, 0.18, 'triangle');
+  }
+
+  public playCinematicWhoosh() {
+    this.playTransientTone(220, 0.5, 'sawtooth');
+  }
+
+  public playHeartbeatThud() {
+    this.playTransientTone(90, 0.24, 'sine');
+  }
+
+  public playGrandRevealBoom() {
+    this.playTransientTone(55, 0.7, 'sine');
+  }
+
+  public playSupernovaBloom() {
+    this.playTransientTone(880, 0.65, 'sine');
   }
 
   public stop() {
@@ -206,9 +251,26 @@ export class AmbientSoundscape {
     wind.start();
     this.activeNodes.push(wind, windFilter);
 
-    // Subtle cricket chirps
+    // Subtle cricket chirps + occasional distant owl
     this.intervalId = setInterval(() => {
       if (!this.isRunning || !this.ctx || !this.gainNode) return;
+
+      if (Math.random() < 0.12) {
+        const owl = this.ctx.createOscillator();
+        const owlGain = this.ctx.createGain();
+        owl.type = 'triangle';
+        owl.frequency.setValueAtTime(280, this.ctx.currentTime);
+        owl.frequency.exponentialRampToValueAtTime(180, this.ctx.currentTime + 0.6);
+        owlGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+        owlGain.gain.linearRampToValueAtTime(0.025, this.ctx.currentTime + 0.15);
+        owlGain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 1.2);
+        owl.connect(owlGain);
+        owlGain.connect(this.gainNode);
+        owl.start();
+        owl.stop(this.ctx.currentTime + 1.3);
+        return;
+      }
+
       const cricket = this.ctx.createOscillator();
       const cricketGain = this.ctx.createGain();
       cricket.type = 'sine';
@@ -223,6 +285,75 @@ export class AmbientSoundscape {
       cricket.start();
       cricket.stop(this.ctx.currentTime + 0.4);
     }, 1800);
+  }
+
+  // --- BEDROOM THEME: Rain on glass, vinyl warmth, soft night hum ---
+  private startBedroom() {
+    if (!this.ctx || !this.gainNode) return;
+    const ctx = this.ctx;
+
+    const bufferSize = ctx.sampleRate * 2;
+    const rainBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const rainData = rainBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      rainData[i] = (Math.random() * 2 - 1) * 0.12;
+    }
+    const rain = ctx.createBufferSource();
+    rain.buffer = rainBuffer;
+    rain.loop = true;
+
+    const rainFilter = ctx.createBiquadFilter();
+    rainFilter.type = 'bandpass';
+    rainFilter.frequency.setValueAtTime(2800, ctx.currentTime);
+    rainFilter.Q.setValueAtTime(0.7, ctx.currentTime);
+
+    rain.connect(rainFilter);
+    rainFilter.connect(this.gainNode);
+    rain.start();
+    this.activeNodes.push(rain, rainFilter);
+
+    const padNotes = [146.83, 220.0, 261.63, 329.63];
+    padNotes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.018 / (idx + 1), ctx.currentTime);
+      osc.connect(gain);
+      gain.connect(this.gainNode!);
+      osc.start();
+      this.activeNodes.push(osc, gain);
+    });
+
+    const crackleBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const crackleData = crackleBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      crackleData[i] = Math.random() > 0.997 ? (Math.random() * 2 - 1) * 0.4 : 0;
+    }
+    const crackle = ctx.createBufferSource();
+    crackle.buffer = crackleBuffer;
+    crackle.loop = true;
+    const crackleGain = ctx.createGain();
+    crackleGain.gain.setValueAtTime(0.04, ctx.currentTime);
+    crackle.connect(crackleGain);
+    crackleGain.connect(this.gainNode);
+    crackle.start();
+    this.activeNodes.push(crackle, crackleGain);
+
+    this.intervalId = setInterval(() => {
+      if (!this.isRunning || !this.ctx || !this.gainNode) return;
+      const chime = this.ctx.createOscillator();
+      const chimeGain = this.ctx.createGain();
+      chime.type = 'sine';
+      chime.frequency.setValueAtTime(880 + Math.random() * 220, this.ctx.currentTime);
+      chimeGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+      chimeGain.gain.linearRampToValueAtTime(0.02, this.ctx.currentTime + 0.4);
+      chimeGain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 3.5);
+      chime.connect(chimeGain);
+      chimeGain.connect(this.gainNode);
+      chime.start();
+      chime.stop(this.ctx.currentTime + 3.6);
+    }, 9000);
   }
 
   // --- SPACE THEME: Deep cosmic synth drone & ethereal shimmer ---

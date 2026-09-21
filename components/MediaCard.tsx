@@ -96,26 +96,31 @@ export function MediaCard({ data, onClick, theme }: { data: any, onClick: (data:
 
   const getColors = () => {
     if (theme === 'ocean') return { bg: 'rgba(0, 15, 30, 0.85)', border: 'rgba(50, 150, 255, 0.4)', text: 'text-blue-50', tag: 'bg-blue-900/60 text-blue-300 border-blue-500/30' };
-    if (theme === 'forest') return { bg: 'rgba(10, 25, 12, 0.85)', border: 'rgba(100, 255, 150, 0.4)', text: 'text-emerald-50', tag: 'bg-emerald-900/60 text-emerald-300 border-emerald-500/30' };
+    if (theme === 'forest') return { bg: 'rgba(8, 22, 14, 0.88)', border: 'rgba(134, 239, 172, 0.45)', text: 'text-emerald-50', tag: 'bg-emerald-900/60 text-emerald-300 border-emerald-500/30' };
     if (theme === 'train') return { bg: '#f0ede6', border: '#d0c8b8', text: 'text-amber-950', tag: 'bg-black/10 text-amber-900 border-amber-900/20', dark: true };
     return { bg: 'rgba(10, 10, 25, 0.85)', border: 'rgba(150, 100, 255, 0.4)', text: 'text-purple-50', tag: 'bg-purple-900/60 text-purple-300 border-purple-500/30' };
   };
   
   const colors = getColors();
+  const isPolaroid = false;
 
   const content = (
     <div 
-      className={`transition-all duration-300 cursor-pointer select-none ${hovered ? 'scale-105 shadow-[0_0_40px_rgba(255,255,255,0.3)]' : 'scale-100 shadow-xl'}`} 
+      className={`transition-all duration-300 cursor-pointer select-none ${
+        isPolaroid
+          ? hovered ? 'scale-105 shadow-[0_16px_48px_rgba(88,28,135,0.4)]' : 'scale-100 shadow-[0_10px_30px_rgba(0,0,0,0.35)]'
+          : hovered ? 'scale-105 shadow-[0_0_40px_rgba(255,255,255,0.3)]' : 'scale-100 shadow-xl'
+      }`} 
       style={{ 
         width: '300px', 
-        height: '230px', 
+        height: isPolaroid ? '278px' : '230px', 
         backgroundColor: colors.bg, 
-        backdropFilter: 'blur(16px)', 
-        border: `1.5px solid ${colors.border}`, 
-        padding: '12px', 
+        backdropFilter: isPolaroid ? undefined : 'blur(16px)', 
+        border: isPolaroid ? `1px solid ${colors.border}` : `1.5px solid ${colors.border}`, 
+        padding: isPolaroid ? '10px 10px 42px 10px' : '12px', 
         display: 'flex', 
         flexDirection: 'column',
-        borderRadius: '18px'
+        borderRadius: isPolaroid ? '3px' : '18px'
       }}
       onPointerEnter={() => { setHover(true); document.body.style.cursor = 'pointer'; }}
       onPointerLeave={() => { setHover(false); document.body.style.cursor = 'auto'; }}
@@ -157,10 +162,10 @@ export function MediaCard({ data, onClick, theme }: { data: any, onClick: (data:
     </div>
   );
 
-  if (theme === 'train') {
+  if (theme === 'train' || theme === 'bedroom') {
     return (
       <group ref={meshRef}>
-        <Drei.Html transform distanceFactor={15} zIndexRange={[100, 0]}>
+        <Drei.Html transform distanceFactor={theme === 'bedroom' ? 9 : 15} zIndexRange={[100, 0]}>
           {content}
         </Drei.Html>
       </group>
