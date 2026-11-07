@@ -29,10 +29,15 @@ import {
   Waves,
   TreePine,
   Train,
+  Flame,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { ambientAudio } from '../components/ambientAudio';
 import { loadMediaUrl, saveMediaFile } from '../lib/mediaStorage';
+import { diwaliMoments } from '../components/DiwaliScene';
+import { startDiwaliSoundtrack } from '../lib/diwaliSoundtrack';
+
+const DiwaliScene = dynamic(() => import('../components/DiwaliScene'), { ssr: false });
 
 // Dynamically import the 3D canvas so it doesn't break SSR
 const MemoryCanvas = dynamic(() => import('../components/MemoryCanvas'), { 
@@ -92,6 +97,8 @@ function stripRuntimeMedia(worlds: World[]): World[] {
 
 const STORAGE_KEY_WORLDS = 'memoryverse_worlds';
 const STORAGE_KEY_ACTIVE = 'memoryverse_active_world_id';
+const DIWALI_EXPIRES_KEY = 'memoryverse_diwali_expires_at';
+const DIWALI_DURATION_MS = 48 * 60 * 60 * 1000;
 const MAX_STORAGE_BYTES = 4 * 1024 * 1024; // 4 MB guard
 
 function normalizeWorld(world: World): World {
@@ -171,9 +178,14 @@ type Toast = { id: number; message: string; type: 'success' | 'warning' | 'error
 
 export default function MemoryVerse() {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [diwaliAvailable, setDiwaliAvailable] = useState(false);
+  const [activeDiwaliMoment, setActiveDiwaliMoment] = useState<number | null>(null);
+  const [diwaliBurstId, setDiwaliBurstId] = useState(0);
+  const [diwaliMusicPlaying, setDiwaliMusicPlaying] = useState(false);
+  const diwaliSoundtrackRef = useRef<{ stop: () => void } | null>(null);
   const [selectedMemory, setSelectedMemory] = useState<MemoryItem | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [viewState, setViewState] = useState<'hero' | 'gallery' | 'canvas'>('hero');
+  const [viewState, setViewState] = useState<'hero' | 'gallery' | 'canvas' | 'diwali'>('hero');
   const [theme, setTheme] = useState<ThemeType>('space');
   const [spaceStyle, setSpaceStyle] = useState<SpaceStyleType>('clusters');
   const [showNewScrapbook, setShowNewScrapbook] = useState(false);
@@ -249,6 +261,14 @@ export default function MemoryVerse() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (viewState !== 'diwali' && diwaliSoundtrackRef.current) {
+      diwaliSoundtrackRef.current.stop();
+      diwaliSoundtrackRef.current = null;
+      setDiwaliMusicPlaying(false);
+    }
+  }, [viewState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -665,6 +685,27 @@ export default function MemoryVerse() {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const now = Date.now();
+    const storedExpiry = Number(localStorage.getItem(DIWALI_EXPIRES_KEY));
+    const expiresAt = storedExpiry || now + DIWALI_DURATION_MS;
+    if (!storedExpiry) localStorage.setItem(DIWALI_EXPIRES_KEY, String(expiresAt));
+
+    const updateCountdown = () => {
+      const remaining = expiresAt - Date.now();
+      if (remaining <= 0) {
+        setDiwaliAvailable(false);
+        setViewState(current => current === 'diwali' ? 'hero' : current);
+        return;
+      }
+      setDiwaliAvailable(true);
+    };
+
+    updateCountdown();
+    const interval = window.setInterval(updateCountdown, 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   if (!isLoaded) return null;
 
   const userHasCustomMemories = memories !== DEFAULT_MEMORIES && 
@@ -805,6 +846,24 @@ export default function MemoryVerse() {
 
         {/* Right Action Buttons */}
         <div className="flex items-center gap-1 sm:gap-2 pointer-events-auto">
+          {diwaliAvailable && (
+            <button
+              onClick={() => {
+                const opening = viewState !== 'diwali';
+                if (opening && !diwaliSoundtrackRef.current) {
+                  diwaliSoundtrackRef.current = startDiwaliSoundtrack();
+                  setDiwaliMusicPlaying(true);
+                }
+                setViewState(opening ? 'diwali' : 'hero');
+                setSelectedMemory(null);
+              }}
+              aria-pressed={viewState === 'diwali'}
+              className={`flex items-center gap-1.5 sm:gap-2 rounded-full border px-3 sm:px-4 h-9 sm:h-10 text-xs sm:text-sm font-medium transition-all ${viewState === 'diwali' ? 'border-amber-200/50 bg-amber-100 text-rose-950 shadow-lg shadow-amber-300/20' : 'border-amber-200/30 bg-gradient-to-r from-rose-950/80 to-amber-950/80 text-amber-100 hover:border-amber-200/60 hover:bg-amber-900/60'}`}
+            >
+              <Flame className="h-4 w-4 text-amber-400" />
+              <span>Diwali</span>
+            </button>
+          )}
           {viewState === 'canvas' && (
             <button 
               onClick={() => { setViewState('gallery'); setSelectedMemory(null); }} 
@@ -1003,6 +1062,58 @@ export default function MemoryVerse() {
               )}
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {viewState === 'diwali' && diwaliAvailable && (
+          <motion.main
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-20 overflow-hidden bg-[#100813]"
+          >
+            <DiwaliScene onSelect={setActiveDiwaliMoment} burstId={diwaliBurstId} />
+            <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-5 pt-24 sm:p-8 sm:pt-28">
+              <div className="mx-auto flex w-full max-w-6xl items-start justify-between gap-4">
+                <div className="pointer-events-auto max-w-xl">
+                  <p className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.34em] text-amber-200/80 sm:text-xs"><Sparkles className="h-3.5 w-3.5" /> दीपावली की रात · a night of lights</p>
+                  <h1 className="font-serif text-5xl leading-none text-amber-50 drop-shadow-[0_2px_24px_rgba(251,191,36,0.4)] sm:text-7xl">Nishashini</h1>
+                  <p className="mt-2 text-sm text-rose-100/85 sm:text-base">Nisha · tonight the whole sky is lit for you.</p>
+                </div>
+                <div className="pointer-events-auto shrink-0 rounded-full border border-amber-100/20 bg-black/35 p-1.5 backdrop-blur-xl">
+                  <button onClick={() => setViewState('hero')} className="rounded-full p-2 text-white/70 hover:bg-white/10 hover:text-white" aria-label="Close Diwali experience"><X className="h-4 w-4" /></button>
+                </div>
+              </div>
+
+              <div className="relative mx-auto w-full max-w-6xl">
+                <div className="pointer-events-auto flex justify-center gap-2 sm:gap-3">
+                  <button onClick={() => {
+                    if (diwaliSoundtrackRef.current) {
+                      diwaliSoundtrackRef.current.stop();
+                      diwaliSoundtrackRef.current = null;
+                      setDiwaliMusicPlaying(false);
+                    } else {
+                      diwaliSoundtrackRef.current = startDiwaliSoundtrack();
+                      setDiwaliMusicPlaying(true);
+                    }
+                  }} aria-label={diwaliMusicPlaying ? 'Turn Diwali music off' : 'Turn Diwali music on'} className="inline-flex h-11 items-center gap-2 rounded-full border border-white/20 bg-black/40 px-3 text-xs text-amber-50/90 backdrop-blur-xl transition hover:border-amber-100/50 hover:bg-black/60 sm:h-12 sm:px-4 sm:text-sm">{diwaliMusicPlaying ? <Volume2 className="h-4 w-4 text-amber-300" /> : <VolumeX className="h-4 w-4" />}<span className="hidden sm:inline">Music</span></button>
+                  {diwaliMoments.map((moment, index) => <button key={moment.title} onClick={() => setActiveDiwaliMoment(index)} aria-label={`Reveal ${moment.title}`} aria-pressed={activeDiwaliMoment === index} className={`group flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-xl transition-all sm:h-12 sm:w-12 ${activeDiwaliMoment === index ? 'scale-110 border-amber-100/70 bg-amber-100/20 shadow-[0_0_28px_rgba(251,191,36,0.25)]' : 'border-white/15 bg-black/35 hover:scale-110 hover:border-amber-100/40'}`}><span className="text-lg drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]">🪔</span></button>)}
+                  <button onClick={() => setDiwaliBurstId(id => id + 1)} className="ml-1 inline-flex h-11 items-center gap-2 rounded-full border border-amber-200/60 bg-gradient-to-r from-amber-300/35 via-rose-400/30 to-fuchsia-400/30 px-4 text-sm font-bold text-amber-50 shadow-[0_0_30px_rgba(251,191,36,0.25)] backdrop-blur-xl transition hover:scale-110 hover:border-amber-100 hover:from-amber-300/50 sm:h-12 sm:px-5"><Flame className="h-4 w-4 text-amber-300" /><span>Burst Pataaka!</span></button>
+                </div>
+                <p className="pointer-events-none mt-4 text-center font-serif text-sm italic text-amber-100/80 sm:text-base">शुभ दीपावली · May your life glow as brightly as these lights. ♡</p>
+              </div>
+              <div className="pointer-events-auto absolute right-4 top-[37%] w-[min(21rem,calc(100vw-2rem))] sm:right-[6%] sm:w-80">
+                <AnimatePresence mode="wait">
+                  <motion.section key={activeDiwaliMoment ?? 'welcome'} initial={{ opacity: 0, x: 14, scale: 0.98 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.28 }} className="rounded-3xl border border-amber-100/25 bg-[#26101d]/75 p-4 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-5">
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.26em] text-amber-200/75">{activeDiwaliMoment === null ? '✦ Your Nisha constellation' : `✦ Little light ${activeDiwaliMoment + 1} of ${diwaliMoments.length}`}</p>
+                    <h2 className="font-serif text-xl text-amber-50 sm:text-2xl">{activeDiwaliMoment === null ? 'A sky full of Nisha things' : diwaliMoments[activeDiwaliMoment].title}</h2>
+                    <p className="mt-2 text-xs leading-5 text-white/80 sm:text-sm sm:leading-6">{activeDiwaliMoment === null ? 'Tap a floating diya for a little Nisha truth. Drag around the celebration, then set off a pataaka.' : diwaliMoments[activeDiwaliMoment].note}</p>
+                  </motion.section>
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.main>
         )}
       </AnimatePresence>
 
