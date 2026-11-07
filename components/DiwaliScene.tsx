@@ -93,24 +93,93 @@ function MarigoldTorans() {
   </group>;
 }
 
-function Firework({ position, color }: { position: [number, number, number]; color: string }) {
+function Lantern({ position, color, delay }: { position: [number, number, number]; color: string; delay: number }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    if (ref.current) ref.current.rotation.z = Math.sin(clock.elapsedTime * 1.1 + delay) * 0.09;
+  });
+  return <group ref={ref} position={position}>
+    <mesh position={[0, 0.55, 0]}><cylinderGeometry args={[0.012, 0.012, 1.1]} /><meshStandardMaterial color="#d9a441" metalness={0.7} /></mesh>
+    <mesh position={[0, -0.12, 0]}><cylinderGeometry args={[0.34, 0.2, 0.65, 8, 1, true]} /><meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.55} transparent opacity={0.82} side={THREE.DoubleSide} /></mesh>
+    <mesh position={[0, -0.12, 0]}><sphereGeometry args={[0.18, 16, 16]} /><meshBasicMaterial color={color} transparent opacity={0.22} /></mesh>
+    <mesh position={[0, -0.52, 0]}><coneGeometry args={[0.22, 0.22, 8]} /><meshStandardMaterial color="#d99b35" metalness={0.65} /></mesh>
+    <pointLight position={[0, -0.1, 0]} color={color} intensity={1.1} distance={4} />
+  </group>;
+}
+
+function PetalShower() {
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  const petals = useMemo(() => Array.from({ length: 68 }, (_, i) => ({
+    x: (Math.sin(i * 87.13) * 0.5 + 0.5) * 19 - 9.5,
+    y: (Math.cos(i * 13.71) * 0.5 + 0.5) * 10 - 2,
+    z: (Math.sin(i * 4.31) * 0.5 + 0.5) * 16 - 9,
+    speed: 0.22 + (i % 7) * 0.035,
+    phase: i * 1.73,
+    color: ['#fb923c', '#fbbf24', '#fb7185', '#f9a8d4'][i % 4],
+  })), []);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  useEffect(() => {
+    if (!mesh.current) return;
+    petals.forEach((petal, i) => mesh.current?.setColorAt(i, new THREE.Color(petal.color)));
+    if (mesh.current.instanceColor) mesh.current.instanceColor.needsUpdate = true;
+  }, [petals]);
+  useFrame(({ clock }) => {
+    if (!mesh.current) return;
+    petals.forEach((petal, i) => {
+      const t = clock.elapsedTime * petal.speed + petal.phase;
+      const fallingY = ((petal.y - t * 0.9 + 36) % 12 + 12) % 12 - 3;
+      dummy.position.set(petal.x + Math.sin(t * 0.7) * 0.7, fallingY, petal.z + Math.cos(t * 0.4) * 0.35);
+      dummy.rotation.set(Math.sin(t) * 0.6, t * 0.5, Math.cos(t * 0.8) * 0.6);
+      dummy.scale.set(0.055, 0.022, 0.11);
+      dummy.updateMatrix();
+      mesh.current?.setMatrixAt(i, dummy.matrix);
+    });
+    mesh.current.instanceMatrix.needsUpdate = true;
+  });
+  return <instancedMesh ref={mesh} args={[undefined, undefined, petals.length]}>
+    <sphereGeometry args={[1, 8, 6]} />
+    <meshStandardMaterial roughness={0.8} metalness={0.05} />
+  </instancedMesh>;
+}
+
+type CrackerStyle = 'sky' | 'rocket' | 'chakri' | 'anaar';
+
+function Firework({ position, color, style }: { position: [number, number, number]; color: string; style: CrackerStyle }) {
+  const spinner = useRef<THREE.Group>(null);
   const points = useRef<THREE.Points>(null);
   const elapsed = useRef(0);
-  const velocities = useMemo(() => Array.from({ length: 90 }, (_, i) => {
-    const golden = Math.PI * (3 - Math.sqrt(5));
-    const y = 1 - (i / 89) * 2;
-    const radius = Math.sqrt(1 - y * y);
-    const angle = golden * i;
-    const speed = 2.2 + ((i * 37) % 100) / 55;
-    return new THREE.Vector3(Math.cos(angle) * radius * speed, y * speed, Math.sin(angle) * radius * speed);
-  }), []);
+  const velocities = useMemo(() => {
+    const particleCount = style === 'anaar' ? 120 : 90;
+    return Array.from({ length: particleCount }, (_, i) => {
+      const golden = Math.PI * (3 - Math.sqrt(5));
+      const y = 1 - (i / (particleCount - 1)) * 2;
+      const radius = Math.sqrt(1 - y * y);
+      const angle = golden * i;
+      const speed = 2.2 + ((i * 37) % 100) / 55;
+      if (style === 'chakri') return new THREE.Vector3(Math.cos(angle) * speed, y * speed * 0.08, Math.sin(angle) * speed);
+      if (style === 'anaar') return new THREE.Vector3(Math.cos(angle) * speed * 0.44, 2.6 + radius * speed * 0.7, Math.sin(angle) * speed * 0.44);
+      return new THREE.Vector3(Math.cos(angle) * radius * speed, y * speed, Math.sin(angle) * radius * speed);
+    });
+  }, [style]);
   const positions = useMemo(() => new Float32Array(velocities.length * 3), [velocities]);
   useFrame((_, delta) => {
     elapsed.current += delta;
+    if (style === 'chakri' && spinner.current) spinner.current.rotation.y += delta * 9;
     const geometry = points.current?.geometry;
     const attribute = geometry?.getAttribute('position') as THREE.BufferAttribute | undefined;
     if (!attribute) return;
-    const t = elapsed.current;
+    if (style === 'rocket' && elapsed.current < 0.68) {
+      const progress = elapsed.current / 0.68;
+      velocities.forEach((_, i) => {
+        const trailOffset = (i % 15) * 0.075;
+        attribute.setXYZ(i, Math.sin(i * 2.3) * 0.035, progress * 3.5 - trailOffset, Math.cos(i * 1.7) * 0.035);
+      });
+      attribute.needsUpdate = true;
+      const material = points.current?.material as THREE.PointsMaterial | undefined;
+      if (material) material.opacity = 0.9;
+      return;
+    }
+    const t = style === 'rocket' ? elapsed.current - 0.68 : elapsed.current;
     velocities.forEach((velocity, i) => {
       const drag = Math.exp(-0.42 * t);
       attribute.setXYZ(i, velocity.x * t * drag, velocity.y * t * drag - 0.42 * t * t, velocity.z * t * drag);
@@ -119,25 +188,41 @@ function Firework({ position, color }: { position: [number, number, number]; col
     const material = points.current?.material as THREE.PointsMaterial | undefined;
     if (material) material.opacity = Math.max(0, 1 - t / 1.8);
   });
-  return <points ref={points} position={position}>
-    <bufferGeometry><bufferAttribute attach="attributes-position" args={[positions, 3]} /></bufferGeometry>
-    <pointsMaterial color={color} size={0.11} sizeAttenuation transparent depthWrite={false} />
-  </points>;
+  return <group ref={spinner} position={position}>
+    <points ref={points}>
+      <bufferGeometry><bufferAttribute attach="attributes-position" args={[positions, 3]} /></bufferGeometry>
+      <pointsMaterial color={color} size={0.11} sizeAttenuation transparent depthWrite={false} />
+    </points>
+    {style === 'chakri' && <pointLight color={color} intensity={2} distance={3} />}
+  </group>;
 }
 
 export default function DiwaliScene({ onSelect, burstId }: { onSelect: (index: number) => void; burstId: number }) {
-  const [fireworks, setFireworks] = useState<{ id: number; position: [number, number, number]; color: string }[]>([]);
+  const [fireworks, setFireworks] = useState<{ id: number; position: [number, number, number]; color: string; style: CrackerStyle }[]>([]);
   const fireworkId = useRef(0);
+  const handledBurstId = useRef(0);
   useEffect(() => {
-    if (!burstId) return;
-    const colors = ['#ffd166', '#fb7185', '#5eead4', '#c4b5fd', '#fb923c', '#ffffff'];
-    const volley = Array.from({ length: 7 }, (_, i) => ({
-      id: ++fireworkId.current,
-      position: [((i - 3) / 3) * 7 + (Math.random() - 0.5), 1.8 + Math.random() * 4, -2 - Math.random() * 5] as [number, number, number],
-      color: colors[Math.floor(Math.random() * colors.length)],
-    }));
-    setFireworks(current => [...current.slice(-21), ...volley]);
-    window.setTimeout(() => setFireworks(current => current.filter(item => !volley.some(firework => firework.id === item.id))), 2200);
+    if (!burstId || handledBurstId.current === burstId) return;
+    handledBurstId.current = burstId;
+    const colors = ['#ffd166', '#fb7185', '#5eead4', '#c4b5fd', '#fb923c', '#ffffff', '#f472b6', '#a3e635'];
+    const styles: CrackerStyle[] = ['sky', 'rocket', 'sky', 'anaar', 'rocket', 'sky', 'chakri', 'sky', 'rocket', 'anaar', 'sky', 'chakri', 'rocket', 'sky', 'sky', 'rocket'];
+    const volley = styles.map((style, i) => {
+      const count = styles.length;
+      return {
+        id: ++fireworkId.current,
+        position: style === 'anaar'
+          ? [((i - (count - 1) / 2) / count) * 7, -1.55, 2 + Math.random() * 2] as [number, number, number]
+          : style === 'chakri'
+            ? [((i - (count - 1) / 2) / count) * 7, -1.65, 1 + Math.random() * 2] as [number, number, number]
+            : style === 'rocket'
+              ? [((i - (count - 1) / 2) / Math.max(1, count / 2)) * 7 + (Math.random() - 0.5), -1.6, -1 - Math.random() * 4] as [number, number, number]
+              : [((i - (count - 1) / 2) / Math.max(1, count / 2)) * 7 + (Math.random() - 0.5), 1.2 + Math.random() * 4.7, -2 - Math.random() * 5] as [number, number, number],
+        color: colors[Math.floor(Math.random() * colors.length)],
+        style,
+      };
+    });
+    setFireworks(current => [...current.slice(-24), ...volley]);
+    window.setTimeout(() => setFireworks(current => current.filter(item => !volley.some(firework => firework.id === item.id))), 2700);
   }, [burstId]);
   return <div className="absolute inset-0">
     <Canvas camera={{ position: [0, 4.6, 16], fov: 46 }} dpr={[1, 1.6]} gl={{ antialias: true, alpha: true }}>
@@ -150,10 +235,14 @@ export default function DiwaliScene({ onSelect, burstId }: { onSelect: (index: n
       <Sparkles count={180} scale={[18, 10, 14]} size={3} speed={0.55} color="#ffd28a" />
       <Sparkles count={55} scale={[13, 7, 8]} position={[-5, 3, -5]} size={5} speed={0.8} color="#fb7185" />
       <Sparkles count={55} scale={[13, 7, 8]} position={[5, 4, -5]} size={5} speed={0.7} color="#5eead4" />
+      <PetalShower />
       <MarigoldTorans />
+      <Lantern position={[-6.6, 3.1, -1]} color="#f97316" delay={0} />
+      <Lantern position={[6.4, 2.8, -1.5]} color="#e879f9" delay={1.3} />
+      <Lantern position={[-3.5, 4.1, -5]} color="#fbbf24" delay={2.1} />
       <Mandala />
       <Rangoli />
-      {fireworks.map(firework => <Firework key={firework.id} position={firework.position} color={firework.color} />)}
+      {fireworks.map(firework => <Firework key={firework.id} position={firework.position} color={firework.color} style={firework.style} />)}
       {moments.map((moment, i) => {
         const angle = (i / moments.length) * Math.PI * 2 - Math.PI / 2;
         return <Diya key={moment.title} index={i} color={moment.color} position={[Math.cos(angle) * 5.2, Math.sin(angle) * 1.55 + 0.2, Math.sin(angle) * 2.2]} onClick={() => onSelect(i)} />;

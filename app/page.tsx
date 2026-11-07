@@ -36,7 +36,7 @@ import dynamic from 'next/dynamic';
 import { ambientAudio } from '../components/ambientAudio';
 import { loadMediaUrl, saveMediaFile } from '../lib/mediaStorage';
 import { diwaliMoments } from '../components/DiwaliScene';
-import { startDiwaliSoundtrack } from '../lib/diwaliSoundtrack';
+import { playPataakaSound, startDiwaliSoundtrack } from '../lib/diwaliSoundtrack';
 
 const DiwaliScene = dynamic(() => import('../components/DiwaliScene'), { ssr: false });
 
@@ -1089,7 +1089,7 @@ export default function MemoryVerse() {
               </div>
 
               <div className="relative mx-auto w-full max-w-6xl">
-                <div className="pointer-events-auto flex justify-center gap-2 sm:gap-3">
+                <div className="pointer-events-auto flex flex-wrap justify-center gap-2 sm:gap-3">
                   <button onClick={() => {
                     if (diwaliSoundtrackRef.current) {
                       diwaliSoundtrackRef.current.stop();
@@ -1101,9 +1101,12 @@ export default function MemoryVerse() {
                     }
                   }} aria-label={diwaliMusicPlaying ? 'Turn Diwali music off' : 'Turn Diwali music on'} className="inline-flex h-11 items-center gap-2 rounded-full border border-white/20 bg-black/40 px-3 text-xs text-amber-50/90 backdrop-blur-xl transition hover:border-amber-100/50 hover:bg-black/60 sm:h-12 sm:px-4 sm:text-sm">{diwaliMusicPlaying ? <Volume2 className="h-4 w-4 text-amber-300" /> : <VolumeX className="h-4 w-4" />}<span className="hidden sm:inline">Music</span></button>
                   {diwaliMoments.map((moment, index) => <button key={moment.title} onClick={() => setActiveDiwaliMoment(index)} aria-label={`Reveal ${moment.title}`} aria-pressed={activeDiwaliMoment === index} className={`group flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-xl transition-all sm:h-12 sm:w-12 ${activeDiwaliMoment === index ? 'scale-110 border-amber-100/70 bg-amber-100/20 shadow-[0_0_28px_rgba(251,191,36,0.25)]' : 'border-white/15 bg-black/35 hover:scale-110 hover:border-amber-100/40'}`}><span className="text-lg drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]">🪔</span></button>)}
-                  <button onClick={() => setDiwaliBurstId(id => id + 1)} className="ml-1 inline-flex h-11 items-center gap-2 rounded-full border border-amber-200/60 bg-gradient-to-r from-amber-300/35 via-rose-400/30 to-fuchsia-400/30 px-4 text-sm font-bold text-amber-50 shadow-[0_0_30px_rgba(251,191,36,0.25)] backdrop-blur-xl transition hover:scale-110 hover:border-amber-100 hover:from-amber-300/50 sm:h-12 sm:px-5"><Flame className="h-4 w-4 text-amber-300" /><span>Burst Pataaka!</span></button>
+                <button onClick={() => { playPataakaSound(); setDiwaliBurstId(id => id + 1); }} className="ml-1 inline-flex h-11 items-center gap-2 rounded-full border border-amber-200/60 bg-gradient-to-r from-amber-300/35 via-rose-400/30 to-fuchsia-400/30 px-4 text-sm font-bold text-amber-50 shadow-[0_0_30px_rgba(251,191,36,0.25)] backdrop-blur-xl transition hover:scale-110 hover:border-amber-100 hover:from-amber-300/50 sm:h-12 sm:px-5"><Flame className="h-4 w-4 text-amber-300" /><span>Light Pataaka</span></button>
                 </div>
-                <p className="pointer-events-none mt-4 text-center font-serif text-sm italic text-amber-100/80 sm:text-base">शुभ दीपावली · May your life glow as brightly as these lights. ♡</p>
+                <div className="pointer-events-none mt-4 text-center">
+                  <p className="font-serif text-4xl font-semibold tracking-[0.08em] text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-50 to-rose-200 drop-shadow-[0_0_26px_rgba(251,191,36,0.48)] sm:text-6xl">Happy Diwali</p>
+                  <p className="mt-1 font-serif text-sm italic text-amber-100/80 sm:text-base">शुभ दीपावली · May your life glow as brightly as these lights.</p>
+                </div>
               </div>
               <div className="pointer-events-auto absolute right-4 top-[37%] w-[min(21rem,calc(100vw-2rem))] sm:right-[6%] sm:w-80">
                 <AnimatePresence mode="wait">
