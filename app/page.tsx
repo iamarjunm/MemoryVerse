@@ -102,7 +102,8 @@ const DIWALI_DURATION_MS = 48 * 60 * 60 * 1000;
 const MAX_STORAGE_BYTES = 4 * 1024 * 1024; // 4 MB guard
 
 function normalizeWorld(world: World): World {
-  const theme = world.theme === 'bedroom' || (world.theme as string) === 'birthday'
+  const storedTheme = world.theme as string;
+  const theme = storedTheme === 'bedroom' || storedTheme === 'birthday'
     ? 'space'
     : world.theme;
   return { ...world, theme };
