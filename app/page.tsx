@@ -29,6 +29,7 @@ import {
   Waves,
   TreePine,
   Train,
+  BedDouble,
   Flame,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
